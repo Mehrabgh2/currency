@@ -20,7 +20,7 @@ class CurrencyRow extends StatelessWidget {
             style: const TextStyle(color: Colors.black),
           ),
           trailing: Text(
-            currency.quote.uSD.price.value.toStringAsFixed(3),
+            "\$ ${currency.quote.uSD.price.value.toStringAsFixed(3)}",
             style: TextStyle(color: currency.quote.uSD.isChanged ? currency.quote.uSD.isIncrement.value ? Colors.green : Colors.red : Colors.black),
           ),
         );

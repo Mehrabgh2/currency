@@ -24,30 +24,46 @@ class CurrencyListView extends StatelessWidget {
           count: 20, appendPage: appendPage, appendLastPage: appendLastPage);
     });
     channel.stream.listen(
-      (event) {
-        RealtimeCurrency ev =
-            RealtimeCurrency.fromJson(jsonDecode(event.toString()));
-        CurrencyRow row = controller.itemList!.firstWhere((element) =>
-            ev.productId.substring(0, ev.productId.length - 4) ==
-            element.currency.symbol);
-        row.updatePrice(newPrice: double.parse(ev.price));
-      },
-    );
-    return Column(
-      children: [
-        Expanded(
-          child: PagedListView<int, CurrencyRow>(
-            pagingController: controller,
-            builderDelegate: PagedChildBuilderDelegate<CurrencyRow>(
-                itemBuilder: (context, item, index) {
-              return CurrencyRow(
-                currency: item.currency,
-              );
-            }),
-          ),
-        )
-      ],
-    );
+        (event) {
+          RealtimeCurrency ev =
+              RealtimeCurrency.fromJson(jsonDecode(event.toString()));
+          CurrencyRow row = controller.itemList!.firstWhere((element) =>
+              ev.productId.substring(0, ev.productId.length - 4) ==
+              element.currency.symbol);
+          row.updatePrice(newPrice: double.parse(ev.price));
+        },
+        onDone: () {},
+        onError: (err) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Error ${err.toString()}"),
+          ));
+        });
+    return OrientationBuilder(builder: (context, orientation) {
+      return Column(
+        children: [
+          Expanded(
+            child: PagedGridView<int, CurrencyRow>(
+              pagingController: controller,
+              showNewPageProgressIndicatorAsGridChild: false,
+              showNewPageErrorIndicatorAsGridChild: false,
+              showNoMoreItemsIndicatorAsGridChild: false,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                childAspectRatio: 8,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                crossAxisCount: orientation == Orientation.portrait ? 1 : 2,
+              ),
+              builderDelegate: PagedChildBuilderDelegate<CurrencyRow>(
+                  itemBuilder: (context, item, index) {
+                return CurrencyRow(
+                  currency: item.currency,
+                );
+              }),
+            ),
+          )
+        ],
+      );
+    });
   }
 
   void appendPage(List<Currency> items) {
@@ -79,5 +95,35 @@ class CurrencyListView extends StatelessWidget {
         {"name": "ticker", "product_ids": showedCoins}
       ]
     }));
+  }
+
+  void retryConnect(BuildContext context) {
+    channel =
+        WebSocketChannel.connect(Uri.parse("wss://ws-feed.pro.coinbase.com"));
+    channel.sink.add(jsonEncode({
+      "type": "subscribe",
+      "channels": [
+        {"name": "ticker", "product_ids": showedCoins}
+      ]
+    }));
+    channel.stream.listen(
+        (event) {
+          RealtimeCurrency ev =
+              RealtimeCurrency.fromJson(jsonDecode(event.toString()));
+          CurrencyRow row = controller.itemList!.firstWhere((element) =>
+              ev.productId.substring(0, ev.productId.length - 4) ==
+              element.currency.symbol);
+          row.updatePrice(newPrice: double.parse(ev.price));
+        },
+        onDone: () {},
+        onError: (err) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text("Error ${err.toString()}"),
+          ));
+        });
+  }
+
+  void dispose() {
+    channel.sink.close();
   }
 }
